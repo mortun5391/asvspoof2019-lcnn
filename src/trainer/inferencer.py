@@ -1,3 +1,4 @@
+import pandas as pd
 import torch
 from tqdm.auto import tqdm
 
@@ -65,6 +66,7 @@ class Inferencer(BaseTrainer):
         # path definition
 
         self.save_path = save_path
+        self._prediction_rows = {}
 
         # define metrics
         self.metrics = metrics
@@ -126,29 +128,23 @@ class Inferencer(BaseTrainer):
             for met in self.metrics["inference"]:
                 metrics.update(met.name, met(**batch))
 
-        # Some saving logic. This is an example
-        # Use if you need to save predictions on disk
-
         batch_size = batch["logits"].shape[0]
-        current_id = batch_idx * batch_size
+        rows = self._prediction_rows.setdefault(part, [])
+        utt_ids = batch.get(
+            "utt_id",
+            [f"{part}_{batch_idx}_{i}" for i in range(batch_size)],
+        )
 
         for i in range(batch_size):
-            # clone because of
-            # https://github.com/pytorch/pytorch/issues/1995
-            logits = batch["logits"][i].clone()
-            label = batch["labels"][i].clone()
-            pred_label = logits.argmax(dim=-1)
-
-            output_id = current_id + i
-
-            output = {
-                "pred_label": pred_label,
-                "label": label,
+            score = batch.get("scores", batch["logits"].max(dim=-1).values)
+            row = {
+                "utt_id": utt_ids[i],
+                "score": score[i].detach().cpu().item(),
             }
-
-            if self.save_path is not None:
-                # you can use safetensors or other lib here
-                torch.save(output, self.save_path / part / f"output_{output_id}.pth")
+            label = batch["labels"][i].detach().cpu().item()
+            if self.config.inferencer.get("include_labels", False) and label >= 0:
+                row["label"] = int(label)
+            rows.append(row)
 
         return batch
 
@@ -166,11 +162,12 @@ class Inferencer(BaseTrainer):
         self.is_train = False
         self.model.eval()
 
-        self.evaluation_metrics.reset()
+        if self.evaluation_metrics is not None:
+            self.evaluation_metrics.reset()
 
         # create Save dir
         if self.save_path is not None:
-            (self.save_path / part).mkdir(exist_ok=True, parents=True)
+            self.save_path.mkdir(exist_ok=True, parents=True)
 
         with torch.no_grad():
             for batch_idx, batch in tqdm(
@@ -185,4 +182,18 @@ class Inferencer(BaseTrainer):
                     metrics=self.evaluation_metrics,
                 )
 
+        if self.save_path is not None:
+            output_csv = self.config.inferencer.get("output_csv", f"{part}.csv")
+            include_header = self.config.inferencer.get("include_header", False)
+            if len(self.evaluation_dataloaders) > 1:
+                output_csv = f"{part}_{output_csv}"
+            rows = self._prediction_rows.get(part, [])
+            pd.DataFrame(rows).to_csv(
+                self.save_path / output_csv,
+                index=False,
+                header=include_header,
+            )
+
+        if self.evaluation_metrics is None:
+            return {}
         return self.evaluation_metrics.result()

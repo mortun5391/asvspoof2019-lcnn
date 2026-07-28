@@ -1,0 +1,13 @@
+torchmetrics
+numpy
+tqdm
+matplotlib
+pandas
+soundfile
+wandb
+comet_ml
+hydra-core
+
+black
+isort
+pre-commit

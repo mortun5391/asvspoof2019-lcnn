@@ -41,7 +41,7 @@ def main(config):
     metrics = instantiate(config.metrics)
 
     # save_path for model predictions
-    save_path = ROOT_PATH / "data" / "saved" / config.inferencer.save_path
+    save_path = ROOT_PATH / config.inferencer.save_path
     save_path.mkdir(exist_ok=True, parents=True)
 
     inferencer = Inferencer(
@@ -60,7 +60,7 @@ def main(config):
     for part in logs.keys():
         for key, value in logs[part].items():
             full_key = part + "_" + key
-            print(f"    {full_key:15s}: {value}")
+            print(f"    {full_key.ljust(15)}: {value}")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,5 @@
+_target_: src.model.LCNN
+num_classes: 2
+input_size: [863, 600]
+embedding_size: 80
+dropout: 0.75

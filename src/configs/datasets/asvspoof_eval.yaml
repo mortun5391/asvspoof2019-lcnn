@@ -1,0 +1,14 @@
+root: data/ASVspoof2019_LA
+
+eval:
+  _target_: src.datasets.ASVspoofDataset
+  root: ${datasets.root}
+  part: eval
+  sample_rate: 16000
+  n_fft: 1724
+  win_length: 1724
+  hop_length: 130
+  target_frames: 600
+  random_crop: false
+  limit: null
+  shuffle_index: false

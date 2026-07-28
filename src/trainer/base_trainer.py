@@ -172,7 +172,7 @@ class BaseTrainer:
 
             # print logged information to the screen
             for key, value in logs.items():
-                self.logger.info(f"    {key:15s}: {value}")
+                self.logger.info(f"    {key.ljust(15)}: {value}")
 
             # evaluate model performance according to configured metric,
             # save best checkpoint as model_best
@@ -228,9 +228,11 @@ class BaseTrainer:
                         epoch, self._progress(batch_idx), batch["loss"].item()
                     )
                 )
-                self.writer.add_scalar(
-                    "learning rate", self.lr_scheduler.get_last_lr()[0]
-                )
+                if self.lr_scheduler is not None:
+                    lr = self.lr_scheduler.get_last_lr()[0]
+                else:
+                    lr = self.optimizer.param_groups[0]["lr"]
+                self.writer.add_scalar("learning rate", lr)
                 self._log_scalars(self.train_metrics)
                 self._log_batch(batch_idx, batch)
                 # we don't want to reset train metrics at the start of every epoch
@@ -468,7 +470,11 @@ class BaseTrainer:
             "epoch": epoch,
             "state_dict": self.model.state_dict(),
             "optimizer": self.optimizer.state_dict(),
-            "lr_scheduler": self.lr_scheduler.state_dict(),
+            "lr_scheduler": (
+                self.lr_scheduler.state_dict()
+                if self.lr_scheduler is not None
+                else None
+            ),
             "monitor_best": self.mnt_best,
             "config": self.config,
         }
@@ -499,7 +505,11 @@ class BaseTrainer:
         """
         resume_path = str(resume_path)
         self.logger.info(f"Loading checkpoint: {resume_path} ...")
-        checkpoint = torch.load(resume_path, self.device)
+        checkpoint = torch.load(
+            resume_path,
+            map_location=self.device,
+            weights_only=False,
+        )
         self.start_epoch = checkpoint["epoch"] + 1
         self.mnt_best = checkpoint["monitor_best"]
 
@@ -512,18 +522,22 @@ class BaseTrainer:
         self.model.load_state_dict(checkpoint["state_dict"])
 
         # load optimizer state from checkpoint only when optimizer type is not changed.
-        if (
-            checkpoint["config"]["optimizer"] != self.config["optimizer"]
-            or checkpoint["config"]["lr_scheduler"] != self.config["lr_scheduler"]
-        ):
+        if checkpoint["config"]["optimizer"] != self.config["optimizer"]:
             self.logger.warning(
-                "Warning: Optimizer or lr_scheduler given in the config file is different "
-                "from that of the checkpoint. Optimizer and scheduler parameters "
-                "are not resumed."
+                "Warning: Optimizer given in the config file is different "
+                "from that of the checkpoint. Optimizer parameters are not resumed."
             )
         else:
             self.optimizer.load_state_dict(checkpoint["optimizer"])
-            self.lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
+
+        if self.lr_scheduler is not None:
+            if checkpoint["config"]["lr_scheduler"] != self.config["lr_scheduler"]:
+                self.logger.warning(
+                    "Warning: lr_scheduler given in the config file is different "
+                    "from that of the checkpoint. Scheduler parameters are not resumed."
+                )
+            elif checkpoint.get("lr_scheduler") is not None:
+                self.lr_scheduler.load_state_dict(checkpoint["lr_scheduler"])
 
         self.logger.info(
             f"Checkpoint loaded. Resume training from epoch {self.start_epoch}"
@@ -545,7 +559,11 @@ class BaseTrainer:
             self.logger.info(f"Loading model weights from: {pretrained_path} ...")
         else:
             print(f"Loading model weights from: {pretrained_path} ...")
-        checkpoint = torch.load(pretrained_path, self.device)
+        checkpoint = torch.load(
+            pretrained_path,
+            map_location=self.device,
+            weights_only=False,
+        )
 
         if checkpoint.get("state_dict") is not None:
             self.model.load_state_dict(checkpoint["state_dict"])

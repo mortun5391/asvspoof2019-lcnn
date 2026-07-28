@@ -1,6 +1,7 @@
 from itertools import repeat
 
 from hydra.utils import instantiate
+from omegaconf import DictConfig
 
 from src.datasets.collate import collate_fn
 from src.utils.init_utils import set_worker_seed
@@ -68,6 +69,12 @@ def get_dataloaders(config, device):
     # dataloaders init
     dataloaders = {}
     for dataset_partition in config.datasets.keys():
+        dataset_config = config.datasets[dataset_partition]
+        if (
+            not isinstance(dataset_config, DictConfig)
+            or "_target_" not in dataset_config
+        ):
+            continue
         dataset = datasets[dataset_partition]
 
         assert config.dataloader.batch_size <= len(dataset), (
