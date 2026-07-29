@@ -46,6 +46,7 @@ class ASVspoofDataset(BaseDataset):
         target_frames=600,
         random_crop=False,
         center_crop=True,
+        max_items_per_label=None,
         eps=1e-10,
         *args,
         **kwargs,
@@ -64,10 +65,13 @@ class ASVspoofDataset(BaseDataset):
         self.target_frames = target_frames
         self.random_crop = random_crop
         self.center_crop = center_crop
+        self.max_items_per_label = max_items_per_label
         self.eps = eps
 
         self.window = torch.blackman_window(self.win_length)
         index = self._build_index()
+        if self.max_items_per_label is not None:
+            index = self._limit_items_per_label(index)
         super().__init__(index, *args, **kwargs)
 
     def __getitem__(self, ind):
@@ -135,6 +139,20 @@ class ASVspoofDataset(BaseDataset):
 
     def _parse_label(self, value):
         return self.LABELS.get(value, -1)
+
+    def _limit_items_per_label(self, index):
+        counts = {}
+        limited_index = []
+        for item in index:
+            label = item["label"]
+            if label < 0:
+                continue
+            count = counts.get(label, 0)
+            if count >= self.max_items_per_label:
+                continue
+            limited_index.append(item)
+            counts[label] = count + 1
+        return limited_index
 
     def _resolve_path(self, path):
         path = Path(path).expanduser()

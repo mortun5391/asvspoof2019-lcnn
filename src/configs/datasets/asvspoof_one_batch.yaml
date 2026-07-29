@@ -9,8 +9,9 @@ train:
   win_length: 1724
   hop_length: 130
   target_frames: 600
+  max_items_per_label: 4
   random_crop: false
-  limit: 8
+  limit: null
   shuffle_index: false
 
 dev:
@@ -22,6 +23,7 @@ dev:
   win_length: 1724
   hop_length: 130
   target_frames: 600
+  max_items_per_label: 4
   random_crop: false
-  limit: 8
+  limit: null
   shuffle_index: false

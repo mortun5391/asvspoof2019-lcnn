@@ -9,6 +9,7 @@ eval:
   win_length: 1724
   hop_length: 130
   target_frames: 600
+  max_items_per_label: null
   random_crop: false
   limit: null
   shuffle_index: false
