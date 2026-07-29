@@ -108,6 +108,9 @@ wandb/
 .cometml-runs/
 outputs/
 predictions/
+students_solutions/
+grades.csv
+ASVspoof2019.LA.cm.eval.trl.txt
 
 # editor, os cache directory
 .vscode/
