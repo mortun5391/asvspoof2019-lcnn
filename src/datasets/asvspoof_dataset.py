@@ -101,6 +101,8 @@ class ASVspoofDataset(BaseDataset):
             raise FileNotFoundError(f"Protocol file not found: {self.protocol_path}")
 
         audio_dir = self.root / self.AUDIO_DIRS[self.part] / "flac"
+        if not audio_dir.exists():
+            audio_dir = self.root / self.AUDIO_DIRS[self.part]
         index = []
         with self.protocol_path.open("r", encoding="utf-8") as protocol:
             for line in protocol:
