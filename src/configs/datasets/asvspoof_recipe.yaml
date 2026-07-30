@@ -1,0 +1,31 @@
+root: data/ASVspoof2019_LA
+
+train:
+  _target_: src.datasets.ASVspoofDataset
+  root: ${datasets.root}
+  part: train
+  sample_rate: 16000
+  n_fft: 1724
+  win_length: 1724
+  hop_length: 130
+  target_frames: 600
+  random_crop: true
+  center_crop: false
+  max_items_per_label: null
+  limit: null
+  shuffle_index: true
+
+dev:
+  _target_: src.datasets.ASVspoofDataset
+  root: ${datasets.root}
+  part: dev
+  sample_rate: 16000
+  n_fft: 1724
+  win_length: 1724
+  hop_length: 130
+  target_frames: 600
+  random_crop: false
+  center_crop: false
+  max_items_per_label: null
+  limit: null
+  shuffle_index: false

@@ -1,0 +1,17 @@
+defaults:
+  - model: stc_lcnn
+  - metrics: asvspoof
+  - datasets: asvspoof_eval_multicrop
+  - dataloader: audio
+  - transforms: asvspoof
+  - _self_
+
+inferencer:
+  device_tensors: ["features", "labels"]
+  device: auto
+  save_path: "predictions/asvspoof_eval"
+  output_csv: "predictions.csv"
+  include_header: False
+  include_labels: False
+  seed: 42
+  from_pretrained: "saved/lcnn-recipe/model_best.pth"

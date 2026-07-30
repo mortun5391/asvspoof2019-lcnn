@@ -46,6 +46,7 @@ class ASVspoofDataset(BaseDataset):
         target_frames=600,
         random_crop=False,
         center_crop=True,
+        num_crops=1,
         max_items_per_label=None,
         eps=1e-10,
         *args,
@@ -65,6 +66,7 @@ class ASVspoofDataset(BaseDataset):
         self.target_frames = target_frames
         self.random_crop = random_crop
         self.center_crop = center_crop
+        self.num_crops = num_crops
         self.max_items_per_label = max_items_per_label
         self.eps = eps
 
@@ -175,20 +177,43 @@ class ASVspoofDataset(BaseDataset):
         )
         log_power = torch.log(spectrum.abs().pow(2) + self.eps)
         log_power = self._fix_num_frames(log_power)
+        if log_power.ndim == 3:
+            return log_power.unsqueeze(1)
         return log_power.unsqueeze(0)
 
     def _fix_num_frames(self, features):
         num_frames = features.shape[-1]
         if num_frames < self.target_frames:
-            return F.pad(features, (0, self.target_frames - num_frames))
+            features = F.pad(features, (0, self.target_frames - num_frames))
+            if self.num_crops > 1:
+                return features.unsqueeze(0).repeat(self.num_crops, 1, 1)
+            return features
         if num_frames == self.target_frames:
+            if self.num_crops > 1:
+                return features.unsqueeze(0).repeat(self.num_crops, 1, 1)
             return features
 
         max_start = num_frames - self.target_frames
         if self.random_crop:
             start = torch.randint(0, max_start + 1, size=(1,)).item()
-        elif self.center_crop:
-            start = max_start // 2
-        else:
-            start = 0
+            return features[:, start : start + self.target_frames]
+
+        if self.num_crops > 1:
+            starts = (
+                torch.linspace(
+                    0,
+                    max_start,
+                    steps=self.num_crops,
+                )
+                .round()
+                .long()
+            )
+            return torch.stack(
+                [
+                    features[:, start : start + self.target_frames]
+                    for start in starts.tolist()
+                ]
+            )
+
+        start = max_start // 2 if self.center_crop else 0
         return features[:, start : start + self.target_frames]

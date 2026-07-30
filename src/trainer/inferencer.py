@@ -121,7 +121,7 @@ class Inferencer(BaseTrainer):
         batch = self.move_batch_to_device(batch)
         batch = self.transform_batch(batch)  # transform batch on device -- faster
 
-        outputs = self.model(**batch)
+        outputs = self._run_model(batch)
         batch.update(outputs)
 
         if metrics is not None:
@@ -147,6 +147,30 @@ class Inferencer(BaseTrainer):
             rows.append(row)
 
         return batch
+
+    def _run_model(self, batch):
+        features = batch["features"]
+        if features.ndim != 5:
+            return self.model(**batch)
+
+        num_crops = features.shape[1]
+        crop_logits = []
+        crop_scores = []
+        for crop_idx in range(num_crops):
+            crop_batch = {
+                key: value
+                for key, value in batch.items()
+                if key not in {"features", "labels", "utt_id"}
+            }
+            crop_batch["features"] = features[:, crop_idx]
+            crop_outputs = self.model(**crop_batch)
+            crop_logits.append(crop_outputs["logits"])
+            crop_scores.append(crop_outputs["scores"])
+
+        return {
+            "logits": torch.stack(crop_logits).mean(dim=0),
+            "scores": torch.stack(crop_scores).mean(dim=0),
+        }
 
     def _inference_part(self, part, dataloader):
         """

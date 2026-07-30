@@ -49,7 +49,9 @@ class Trainer(BaseTrainer):
             self._clip_grad_norm()
             self.optimizer.step()
             if self.lr_scheduler is not None:
-                self.lr_scheduler.step()
+                scheduler_step = self.config.trainer.get("scheduler_step", "batch")
+                if scheduler_step == "batch":
+                    self.lr_scheduler.step()
 
         # update metrics for each loss (in case of multiple losses)
         for loss_name in self.config.writer.loss_names:
