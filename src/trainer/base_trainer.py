@@ -562,7 +562,6 @@ class BaseTrainer:
         checkpoint = torch.load(
             pretrained_path,
             map_location=self.device,
-            weights_only=False,
         )
 
         if checkpoint.get("state_dict") is not None:
